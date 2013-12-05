@@ -78,9 +78,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#if defined(__CYGWIN32__)
+//#if defined(__CYGWIN32__)
 #include <errno.h>
-#endif
+//#endif
 
 #include "host.h"
 #include "misc.h"
@@ -96,9 +96,9 @@ range_parse_pos(char *pstr,			/* execution position string */
 {
   char *s, *endp;
   struct sym_sym_t *sym;
-#if !defined(__CYGWIN32__)
+//#if !defined(__CYGWIN32__)
   extern int errno;
-#endif
+//#endif
 
   /* determine position type */
   if (pstr[0] == '@')
