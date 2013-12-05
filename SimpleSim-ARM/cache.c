@@ -559,6 +559,13 @@ cache_access(struct cache_t *cp,	/* cache to access */
   md_addr_t bofs = CACHE_BLK(cp, addr);
   struct cache_blk_t *blk, *repl;
   int lat = 0;
+  FILE *trace_ptr;
+  char setNumber[10];
+  //itoa(set, setNumber, 10);
+  sprintf(setNumber, "%d", set);
+  char *fileName = (char*)malloc(sizeof(char)*100);
+  strcpy(fileName, "trace_file_");
+  strcat(fileName, setNumber);
 
   /* default replacement address */
   if (repl_addr)
@@ -582,6 +589,14 @@ cache_access(struct cache_t *cp,	/* cache to access */
   if (!addr)
     return 1;
 
+  if(strcmp(cp->name,"il1") == 0)
+  {
+    trace_ptr = fopen(fileName, "a+");
+    fprintf(trace_ptr, "%X   %s\n", addr, setNumber); 
+    fclose(trace_ptr);
+  }
+
+  free(fileName);
   /* permissions are checked on cache misses */
 
   /* check for a fast hit: access to same block */

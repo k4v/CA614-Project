@@ -1,4 +1,4 @@
-#!/usr/intel/bin/perl
+#!/usr/bin/perl
 
 #
 # textprof - text segment profile viewer

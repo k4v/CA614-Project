@@ -721,6 +721,9 @@ sim_main(void)
   enum md_fault_type fault;
   int setPC;
 
+  FILE *fp_to_trace_file = fopen("itrace_file.txt", "w");
+
+
   fprintf(stderr, "sim: ** starting functional simulation **\n");
 
   /* set up initial default next PC */
@@ -747,6 +750,7 @@ sim_main(void)
       /* get the next instruction to execute */
       MD_FETCH_INST(inst, mem, regs.regs_PC);
 
+      fprintf(fp_to_trace_file, "%X\n", regs.regs_PC);
       if (verbose)
 	{
 	  myfprintf(stderr, "%10n @ 0x%08p: ", sim_num_insn, regs.regs_PC);
@@ -984,4 +988,5 @@ sim_main(void)
       if (max_insts && sim_num_insn >= max_insts)
 	return;
     }
+  fclose(fp_to_trace_file);
 }
