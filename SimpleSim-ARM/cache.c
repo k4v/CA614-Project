@@ -431,6 +431,9 @@ cache_create(char *name,		/* name of the cache */
 	  blk->user_data = (usize != 0
 			    ? (byte_t *)calloc(usize, sizeof(byte_t)) : NULL);
 
+      /* initialize lock status to 0 */
+      blk->is_cache_locked = 0;
+
 	  /* insert cache block into set hash table */
 	  if (cp->hsize)
 	    link_htab_ent(cp, &cp->sets[i], blk);
@@ -561,10 +564,10 @@ cache_access(struct cache_t *cp,	/* cache to access */
   int lat = 0;
   FILE *trace_ptr;
   char setNumber[10];
-  //itoa(set, setNumber, 10);
+
   sprintf(setNumber, "%d", set);
   char *fileName = (char*)malloc(sizeof(char)*100);
-  strcpy(fileName, "trace_file_");
+  strcpy(fileName, "trace/trace_file_");
   strcat(fileName, setNumber);
 
   /* default replacement address */
@@ -643,7 +646,8 @@ cache_access(struct cache_t *cp,	/* cache to access */
   case LRU:
   case FIFO:
     repl = cp->sets[set].way_tail;
-    update_way_list(&cp->sets[set], repl, Head);
+    //if(repl->is_cache_locked == 0)
+        update_way_list(&cp->sets[set], repl, Head);
     break;
   case Random:
     {
@@ -656,7 +660,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
   }
 
   /* remove this block from the hash bucket chain, if hash exists */
-  if (cp->hsize)
+  if (cp->hsize /*&& repl->is_cache_locked == 0*/)
     unlink_htab_ent(cp, &cp->sets[set], repl);
 
   /* blow away the last block to hit */
@@ -664,7 +668,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
   cp->last_blk = NULL;
 
   /* write back replaced block data */
-  if (repl->status & CACHE_BLK_VALID)
+  if ((repl->status & CACHE_BLK_VALID) && (repl->is_cache_locked == 0))
     {
       cp->replacements++;
 
@@ -691,6 +695,8 @@ cache_access(struct cache_t *cp,	/* cache to access */
     }
 
   /* update block tags */
+  md_addr_t prev_tag = repl->tag;
+  int prev_status    = repl->status;
   repl->tag = tag;
   repl->status = CACHE_BLK_VALID;	/* dirty bit set on update */
 
@@ -705,7 +711,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
     }
 
   /* update dirty status */
-  if (cmd == Write)
+  if (cmd == Write && repl->is_cache_locked == 0)
     repl->status |= CACHE_BLK_DIRTY;
 
   /* get user block data, if requested and it exists */
@@ -713,10 +719,16 @@ cache_access(struct cache_t *cp,	/* cache to access */
     *udata = repl->user_data;
 
   /* update block status */
-  repl->ready = now+lat;
+  if(repl->is_cache_locked == 0)
+    repl->ready = now+lat;
 
+  if(repl->is_cache_locked == 1)
+  {
+      repl->tag    = prev_tag;
+      repl->status = prev_status;
+  }
   /* link this entry back into the hash table */
-  if (cp->hsize)
+  if (cp->hsize && repl->is_cache_locked == 0)
     link_htab_ent(cp, &cp->sets[set], repl);
 
   /* return latency of the operation */
@@ -787,6 +799,63 @@ cache_access(struct cache_t *cp,	/* cache to access */
 
   /* return first cycle data is available to access */
   return (int) MAX(cp->hit_latency, (blk->ready - now));
+}
+
+/* lock the memory blocks in the 
+ * cache based on the TRP file
+ */
+unsigned int cache_lock(struct cache_t *cp)
+{
+    md_addr_t addr_from_file;
+    md_addr_t tag, cache_set;
+    struct cache_blk_t *blk;
+
+    FILE *ifp = fopen("trace/lockset", "r");
+
+    if (ifp == NULL)
+    {
+        fatal("TRP file does not exist");
+    }
+
+    while(fscanf(ifp, "%X", &addr_from_file) != EOF)
+    {
+
+        tag       = CACHE_TAG(cp, addr_from_file);
+        cache_set = CACHE_SET(cp, addr_from_file);
+
+        if(cp->hsize)
+        {
+            /* For higher associative caches */
+            int hindex = CACHE_HASH (cp, tag);
+
+            blk = cp->sets[cache_set].hash[hindex];
+            while (blk && blk->is_cache_locked)
+                blk = blk->hash_next;
+
+            if(blk)
+            {
+                blk->tag     = tag;
+                blk->status  = CACHE_BLK_VALID;
+                blk->is_cache_locked = 1;
+            }
+        }
+        else
+        {
+            blk = cp->sets[cache_set].way_head;
+
+            if(blk)
+            {
+                blk->tag     = tag;
+                blk->status  = CACHE_BLK_VALID;
+                blk->is_cache_locked = 1;
+            }
+        }
+
+    }
+
+    fclose(ifp);
+    return 1;
+
 }
 
 /* return non-zero if block containing address ADDR is contained in cache

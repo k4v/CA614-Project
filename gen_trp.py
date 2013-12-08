@@ -116,13 +116,13 @@ def heuristic_cache_locking(cacheset_index, cache_assoc):
 
 if __name__ == "__main__":
 
-    folder_name = 'trace-stringsearch-small'     # Base folder to search for trace files
+    folder_name = '.'     # Base folder to search for trace files
     if len(sys.argv) > 1:
         folder_name = sys.argv[1]
 
     cache_assoc = 2                              # Associativity of cache
     if len(sys.argv) > 2:
-        cache_assoc = sys.argv[2]
+        cache_assoc = int(sys.argv[2])
 
     file_index = 0
 

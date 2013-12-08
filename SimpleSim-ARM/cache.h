@@ -153,6 +153,7 @@ struct cache_blk_t
   unsigned int status;		/* block status, see CACHE_BLK_* defs above */
   tick_t ready;		/* time when block will be accessible, field
 				   is set when a miss fetch is initiated */
+  int is_cache_locked;
   byte_t *user_data;		/* pointer to user defined data, e.g.,
 				   pre-decode data or physical page address */
   /* DATA should be pointer-aligned due to preceeding field */
@@ -293,6 +294,12 @@ cache_access(struct cache_t *cp,	/* cache to access */
 	     tick_t now,		/* time of access */
 	     byte_t **udata,		/* for return of user data ptr */
 	     md_addr_t *repl_addr);	/* for address of replaced block */
+
+
+/* lock the memory blocks in the cache after reading the TRP file */
+unsigned int				/* latency of access in cycles */
+cache_lock(struct cache_t *cp);	/* cache to access */
+
 
 /* cache access functions, these are safe, they check alignment and
    permissions */
