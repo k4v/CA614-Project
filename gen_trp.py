@@ -15,9 +15,6 @@ addr_lines_map = {}
 # The final solution of memory blocks to lock
 lock_addresses = {}
 
-num_hit = 0
-max_hit = 0
-
 
 ##
 # Find number of unique memory references between address reference at indices
@@ -175,3 +172,8 @@ if __name__ == "__main__":
     print trp_map                                # The final TRP map
     print len(trp_map)
     print lock_addresses
+
+    write_lockset = open(folder_name+'/'+'lockset', 'w')
+    for address_set in lock_addresses.values():
+        for mem_addr in address_set:
+            write_lockset.write(mem_addr+'\n')
