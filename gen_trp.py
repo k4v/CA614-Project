@@ -7,9 +7,8 @@ import fnmatch
 
 # Final TRP map as trp_map[mem_addr][unique_mem_references_list] = count
 trp_map = {}
-# Maps each address to its set index in cache
-# TODO: Convert to set instead of map. Memory addresses only read once via cache index
-cacheset_addr_map = {}
+# List of addresses in currently processing cache set
+cacheset_addr = set()
 # Maps each memory address to a list of line numbers in the trace file
 addr_lines_map = {}
 # The final solution of memory blocks to lock
@@ -59,7 +58,7 @@ def get_num_hit(address_set, lock_set):
 
 OPTIMAL_ALGORITHM = """
 ##
-# addr_set is a copy of cacheset_addr_map[cacheset_index]
+# addr_set is a copy of cacheset_addr[cacheset_index]
 ##
 def do_search(addr_set, lock_set, cache_assoc, cacheset_index):
     global lock_addresses
@@ -85,23 +84,26 @@ def optimal_cache_locking(cacheset_index, cache_assoc):
 
     lock_addresses[cacheset_index] = ()
 
-    max_hit = get_num_hit(cacheset_addr_map[cacheset_index], set())
-    do_search(copy.copy(cacheset_addr_map[cacheset_index]), set(), cache_assoc, cacheset_index)
+    max_hit = get_num_hit(cacheset_addr[cacheset_index], set())
+    do_search(copy.copy(cacheset_addr[cacheset_index]), set(), cache_assoc, cacheset_index)
 """
 
 
 def heuristic_cache_locking(cacheset_index, cache_assoc):
+    global cacheset_addr
+    global lock_addresses
+
     lock_addresses[cacheset_index] = set()
     do_continue = True
 
     while do_continue:
-        current_hit = get_num_hit(cacheset_addr_map[cacheset_index], lock_addresses[cacheset_index])
+        current_hit = get_num_hit(cacheset_addr, lock_addresses[cacheset_index])
         benefit = 0
         selected_block = ''
-        use_addresses = [x for x in cacheset_addr_map[cacheset_index] if x not in lock_addresses[cacheset_index]]
+        use_addresses = [x for x in cacheset_addr if x not in lock_addresses[cacheset_index]]
         for addr in use_addresses:
             new_lockset = set(list(lock_addresses[cacheset_index])+[addr])
-            new_hit = get_num_hit(cacheset_addr_map[cacheset_index], new_lockset)
+            new_hit = get_num_hit(cacheset_addr, new_lockset)
             if (new_hit - current_hit) > benefit:
                 benefit = new_hit - current_hit
                 selected_block = addr
@@ -133,19 +135,20 @@ if __name__ == "__main__":
             file_name = folder_name+'/'+file_name
             line_number = 0
 
+            print 'Reading file '+file_index+'. '+file_name
+
             # Computing the cache set that the address maps to
             file_name_split = file_name.split('_')
             cacheset_index = file_name_split[len(file_name_split) - 1]
+
+            cacheset_addr = set()
 
             file_index += 1
 
             for line in open(file_name, 'r'):    # First read each file to get list of line numbers each addr is in
                 address = line.split(' ')[0]     # Get the addr (remove the cache set it wil go to)
 
-                if cacheset_index not in cacheset_addr_map.keys():
-                    cacheset_addr_map[cacheset_index] = set()
-
-                cacheset_addr_map[cacheset_index].add(address)       # Storing address to set-index mapping
+                cacheset_addr.add(address)       # Storing address to set-index mapping
 
                 if address not in addr_lines_map.keys():
                     addr_lines_map[address] = []
