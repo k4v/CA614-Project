@@ -388,6 +388,9 @@ int res_fpalu;
 /* total number of floating point multiplier/dividers available */
 static int res_fpmult;
 
+/* flag to indicate if cache locking has been enabled or not */
+static int cache_locking = FALSE;
+
 /* text-based stat profiles */
 #define MAX_PCSTAT_VARS 8
 static int pcstat_nelt = 0;
@@ -979,6 +982,11 @@ sim_reg_options(struct opt_odb_t *odb)
 		 &cache_dl1_opt, "dl1:128:32:4:l",
 		 /* print */TRUE, NULL);
 
+  opt_reg_flag(odb, "-cachelock",
+          "instruction cache lock mode{true|false}",
+          &cache_locking, /* default */ FALSE,
+          /* print */ TRUE, /* format */ NULL);
+
   opt_reg_note(odb,
 "  The cache config parameter <config> has the following format:\n"
 "\n"
@@ -1256,28 +1264,28 @@ sim_check_options(struct opt_odb_t *odb,        /* options database */
       cache_dl2 = NULL;
     }
   else /* dl1 is defined */
-    {
+  {
       if (sscanf(cache_dl1_opt, "%[^:]:%d:%d:%d:%c",
-		 name, &nsets, &bsize, &assoc, &c) != 5)
-	fatal("bad l1 D-cache parms: <name>:<nsets>:<bsize>:<assoc>:<repl>");
+                  name, &nsets, &bsize, &assoc, &c) != 5)
+          fatal("bad l1 D-cache parms: <name>:<nsets>:<bsize>:<assoc>:<repl>");
       cache_dl1 = cache_create(name, nsets, bsize, /* balloc */FALSE,
-			       /* usize */0, assoc, cache_char2policy(c),
-			       dl1_access_fn, /* hit lat */cache_dl1_lat);
+              /* usize */0, assoc, cache_char2policy(c),
+              dl1_access_fn, /* hit lat */cache_dl1_lat);
 
       /* is the level 2 D-cache defined? */
       if (!mystricmp(cache_dl2_opt, "none"))
-	cache_dl2 = NULL;
+          cache_dl2 = NULL;
       else
-	{
-	  if (sscanf(cache_dl2_opt, "%[^:]:%d:%d:%d:%c",
-		     name, &nsets, &bsize, &assoc, &c) != 5)
-	    fatal("bad l2 D-cache parms: "
-		  "<name>:<nsets>:<bsize>:<assoc>:<repl>");
-	  cache_dl2 = cache_create(name, nsets, bsize, /* balloc */FALSE,
-				   /* usize */0, assoc, cache_char2policy(c),
-				   dl2_access_fn, /* hit lat */cache_dl2_lat);
-	}
-    }
+      {
+          if (sscanf(cache_dl2_opt, "%[^:]:%d:%d:%d:%c",
+                      name, &nsets, &bsize, &assoc, &c) != 5)
+              fatal("bad l2 D-cache parms: "
+                      "<name>:<nsets>:<bsize>:<assoc>:<repl>");
+          cache_dl2 = cache_create(name, nsets, bsize, /* balloc */FALSE,
+                  /* usize */0, assoc, cache_char2policy(c),
+                  dl2_access_fn, /* hit lat */cache_dl2_lat);
+      }
+  }
 
   /* use a level 1 I-cache? */
   if (!mystricmp(cache_il1_opt, "none"))
@@ -1319,6 +1327,10 @@ sim_check_options(struct opt_odb_t *odb,        /* options database */
       cache_il1 = cache_create(name, nsets, bsize, /* balloc */FALSE,
 			       /* usize */0, assoc, cache_char2policy(c),
 			       il1_access_fn, /* hit lat */cache_il1_lat);
+          if(cache_locking == TRUE)
+          {
+              cache_lock(cache_il1);
+          }
 
       /* is the level 2 D-cache defined? */
       if (!mystricmp(cache_il2_opt, "none"))
@@ -1330,15 +1342,21 @@ sim_check_options(struct opt_odb_t *odb,        /* options database */
 	  cache_il2 = cache_dl2;
 	}
       else
-	{
-	  if (sscanf(cache_il2_opt, "%[^:]:%d:%d:%d:%c",
-		     name, &nsets, &bsize, &assoc, &c) != 5)
-	    fatal("bad l2 I-cache parms: "
-		  "<name>:<nsets>:<bsize>:<assoc>:<repl>");
-	  cache_il2 = cache_create(name, nsets, bsize, /* balloc */FALSE,
-				   /* usize */0, assoc, cache_char2policy(c),
-				   il2_access_fn, /* hit lat */cache_il2_lat);
-	}
+      {
+          if (sscanf(cache_il2_opt, "%[^:]:%d:%d:%d:%c",
+                      name, &nsets, &bsize, &assoc, &c) != 5)
+              fatal("bad l2 I-cache parms: "
+                      "<name>:<nsets>:<bsize>:<assoc>:<repl>");
+          cache_il2 = cache_create(name, nsets, bsize, /* balloc */FALSE,
+                  /* usize */0, assoc, cache_char2policy(c),
+                  il2_access_fn, /* hit lat */cache_il2_lat);
+          /*
+          if(cache_locking == TRUE)
+          {
+              cache_lock(cache_il2);
+          }*/
+
+      }
     }
 
   /* use an I-TLB? */
