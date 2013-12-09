@@ -135,7 +135,7 @@ if __name__ == "__main__":
             file_name = folder_name+'/'+file_name
             line_number = 0
 
-            print 'Reading file '+file_index+') '+file_name
+            print 'Reading file '+str(file_index)+') '+file_name
 
             # Computing the cache set that the address maps to
             file_name_split = file_name.split('_')

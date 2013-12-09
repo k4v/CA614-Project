@@ -719,7 +719,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
     *udata = repl->user_data;
 
   /* update block status */
-  if(repl->is_cache_locked == 0)
+  //if(repl->is_cache_locked == 0)
     repl->ready = now+lat;
 
   if(repl->is_cache_locked == 1)
@@ -728,7 +728,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
       repl->status = prev_status;
   }
   /* link this entry back into the hash table */
-  if (cp->hsize && repl->is_cache_locked == 0)
+  if (cp->hsize /*&& repl->is_cache_locked == 0*/)
     link_htab_ent(cp, &cp->sets[set], repl);
 
   /* return latency of the operation */
@@ -747,7 +747,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
     }
 
   /* update dirty status */
-  if (cmd == Write)
+  if (cmd == Write && blk->is_cache_locked == 0)
     blk->status |= CACHE_BLK_DIRTY;
 
   /* if LRU replacement and this is not the first element of list, reorder */
@@ -782,7 +782,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
     }
 
   /* update dirty status */
-  if (cmd == Write)
+  if (cmd == Write && blk->is_cache_locked == 0)
     blk->status |= CACHE_BLK_DIRTY;
 
   /* this block hit last, no change in the way list */
@@ -826,9 +826,9 @@ unsigned int cache_lock(struct cache_t *cp)
         if(cp->hsize)
         {
             /* For higher associative caches */
-            int hindex = CACHE_HASH (cp, tag);
+            //int hindex = CACHE_HASH (cp, tag);
 
-            blk = cp->sets[cache_set].hash[hindex];
+            blk = cp->sets[cache_set].hash[0];
             while (blk && blk->is_cache_locked)
                 blk = blk->hash_next;
 
